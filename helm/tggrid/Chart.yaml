@@ -1,0 +1,33 @@
+apiVersion: v2
+name: ufbrowsers
+description: A Helm chart for UFBrowsers browser automation platform
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - browser
+  - automation
+  - selenium
+  - testing
+  - webdriver
+maintainers:
+  - name: UFBrowsers Team
+    email: support@ufbrowsers.example.com
+home: https://github.com/your-org/ufbrowsers
+sources:
+  - https://github.com/your-org/ufbrowsers
+repository: https://charts.example.com
+
+dependencies:
+  - name: postgresql
+    version: "12.x.x"
+    repository: https://charts.bitnami.com/bitnami
+    condition: postgresql.enabled
+  - name: redis
+    version: "17.x.x"
+    repository: https://charts.bitnami.com/bitnami
+    condition: redis.enabled
+  - name: ingress-nginx
+    version: "4.x.x"
+    repository: https://kubernetes.github.io/ingress-nginx
+    condition: ingress-nginx.enabled

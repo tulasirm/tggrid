@@ -1,0 +1,301 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String   @id @default(cuid())
+  email             String   @unique
+  name              String?
+  password          String   @default("")
+  fullName          String   @default("")
+  role              String   @default("user")
+  ssoProvider       String?
+  ssoId             String?
+  twoFactorSecret   String?
+  twoFactorBackupCodes String[] @default([])
+  settings          Json     @default("{\"theme\":\"dark\",\"emailNotifications\":true,\"twoFactorEnabled\":false}")
+  
+  // Billing & Subscription
+  stripeCustomerId  String?  @unique
+  stripeSubscriptionId String?
+  subscriptionPlan  String   @default("starter") // starter, professional, enterprise
+  subscriptionStatus String  @default("inactive") // inactive, active, cancelled, overdue
+  accountBalance    Float    @default(0) // Remaining credits/sessions
+  paidAt            DateTime?
+  lastBillingDate   DateTime?
+  
+  // Kubernetes
+  k8sNamespace      String?  @unique
+  resourcesAllocated Boolean @default(false)
+  lastResourceAllocationAt DateTime?
+  
+  // Usage Tracking
+  totalSessionsUsed Int      @default(0)
+  totalCostIncurred Float    @default(0)
+  
+  // Relations
+  sessions          BrowserSession[]
+  loadBalancerConfigs LoadBalancerConfig[]
+  auditLogs         AuditLog[]
+  sessionMetrics    SessionMetric[]
+  transactions      Transaction[]
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  @@index([email])
+  @@index([subscriptionStatus])
+  @@index([stripeCustomerId])
+}
+
+model Post {
+  id        String   @id @default(cuid())
+  title     String
+  content   String?
+  published Boolean  @default(false)
+  authorId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SystemConfiguration {
+  id                      String   @id @default(cuid())
+  
+  // Browser Configuration
+  defaultBrowser          String   @default("chrome")
+  maxConcurrentSessions   Int      @default(50)
+  sessionTimeoutMinutes   Int      @default(5)
+  enableVNCByDefault      Boolean  @default(true)
+  
+  // System Settings
+  environment             String   @default("production")
+  logLevel                String   @default("info")
+  metricsCollectionEnabled Boolean @default(true)
+  autoScalingEnabled      Boolean  @default(false)
+  
+  // Performance Settings
+  poolPrewarmSize         Int      @default(15)
+  maxPoolSize             Int      @default(50)
+  containerMemoryMB       Int      @default(512)
+  
+  // Advanced Settings
+  enableMetrics           Boolean  @default(true)
+  enableLogging           Boolean  @default(true)
+  logRetentionDays        Int      @default(7)
+  
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+}
+
+model BrowserSession {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  browser           String   @default("chrome")
+  status            String   @default("idle")
+  capabilities      String   @default("{}")
+  vncEnabled        Boolean  @default(true)
+  videoEnabled      Boolean  @default(false)
+  resolution        String   @default("1920x1080")
+  
+  // Container Management
+  containerId       String?
+  cdpUrl            String?
+  
+  startTime         DateTime @default(now())
+  endTime           DateTime?
+  duration          Int      @default(0)
+  
+  // Billing
+  costEstimate      Float    @default(0)
+  actualCost        Float    @default(0)
+  
+  // Metrics
+  cpuUsage          Float    @default(0)
+  memoryUsage       Float    @default(0)
+  networkLatency    Float    @default(0)
+  
+  // Relations
+  metrics           SessionMetric[]
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  @@index([userId])
+  @@index([status])
+}
+
+model SessionMetric {
+  id                String   @id @default(cuid())
+  sessionId         String
+  session           BrowserSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  eventType         String   @default("metric") // metric, session:started, session:completed
+  metric            String   @default("{}") // JSON blob for flexible metrics
+  
+  cpuUsage          Float?
+  memoryUsage       Float?
+  networkLatency    Float?
+  timestamp         DateTime @default(now())
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  @@index([sessionId])
+  @@index([userId])
+  @@index([eventType])
+}
+
+model SystemMetric {
+  id                String   @id @default(cuid())
+  
+  totalSessions     Int      @default(0)
+  activeSessions    Int      @default(0)
+  cpuUsage          Float    @default(0)
+  memoryUsage       Float    @default(0)
+  networkLatency    Float    @default(0)
+  uptime            Int      @default(0)
+  
+  timestamp         DateTime @default(now())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model LoadBalancerNode {
+  id                String   @id @default(cuid())
+  configId          String
+  config            LoadBalancerConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+  
+  nodeId            String
+  host              String
+  port              Int
+  healthy           Boolean  @default(true)
+  weight            Int      @default(1)
+  capacity          Int      @default(100)
+  currentLoad       Int      @default(0)
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  @@index([configId])
+}
+
+model LoadBalancerConfig {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  algorithm         String   @default("round-robin")
+  healthCheckEnabled Boolean @default(true)
+  healthCheckInterval Int    @default(30)
+  
+  nodes             LoadBalancerNode[]
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  @@index([userId])
+}
+
+model ReportTemplate {
+  id                String   @id @default(cuid())
+  
+  name              String
+  description       String?
+  type              String
+  filters           String   @default("{}")
+  
+  reports           Report[]
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model Report {
+  id                String   @id @default(cuid())
+  
+  name              String
+  type              String
+  templateId        String?
+  template          ReportTemplate? @relation(fields: [templateId], references: [id])
+  
+  data              String   @default("{}")
+  status            String   @default("pending")
+  generatedAt       DateTime?
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  @@index([templateId])
+}
+
+model SecurityPolicy {
+  id                String   @id @default(cuid())
+  
+  authenticationEnabled Boolean @default(true)
+  mfaEnabled        Boolean  @default(false)
+  encryptionEnabled Boolean  @default(true)
+  sslRequired       Boolean  @default(true)
+  ipWhitelist       String   @default("[]")
+  sessionTimeout    Int      @default(1800)
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model AuditLog {
+  id                String   @id @default(cuid())
+  userId            String?
+  user              User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  eventType         String   // payment:verified, k8s:allocated, session:created, etc.
+  action            String?
+  resourceType      String?
+  resourceId        String?
+  details           String?
+  payload           Json?    // Full event payload
+  ipAddress         String?
+  
+  createdAt         DateTime @default(now())
+  
+  @@index([userId])
+  @@index([eventType])
+  @@index([createdAt])
+}
+
+model Transaction {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  type              String   // credit, debit
+  amount            Float
+  description       String
+  balanceAfter      Float
+  
+  // Reference fields
+  stripeChargeId    String?
+  stripeRefundId    String?
+  sessionId         String?
+  
+  timestamp         DateTime @default(now())
+  createdAt         DateTime @default(now())
+  
+  @@index([userId])
+  @@index([type])
+  @@index([timestamp])
+}

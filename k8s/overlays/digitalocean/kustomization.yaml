@@ -1,0 +1,63 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: tggrid
+
+commonLabels:
+  platform: digitalocean
+  environment: production
+
+resources:
+  - ../base-deployment.yaml
+
+patchesStrategicMerge:
+  - ingress-patch.yaml
+
+configMapGenerator:
+  - name: tggrid-config
+    behavior: merge
+    literals:
+      - PLATFORM=digitalocean
+      - KUBERNETES_PROVIDER=digitalocean
+
+secretGenerator:
+  - name: tggrid-secrets
+    behavior: merge
+    envs:
+      - secrets.env
+
+images:
+  - name: tggrid/main-app
+    newTag: latest
+    newName: registry.digitalocean.com/tggrid/main-app
+  - name: tggrid/browser-pool
+    newTag: latest
+    newName: registry.digitalocean.com/tggrid/browser-pool
+  - name: tggrid/websocket-service
+    newTag: latest
+    newName: registry.digitalocean.com/tggrid/websocket-service
+
+patchesJson6902:
+  - target:
+      group: apps
+      version: v1
+      kind: Service
+      name: tggrid-app
+    patch: |-
+      - op: replace
+        path: /spec/type
+        value: LoadBalancer
+      - op: add
+        path: /metadata/annotations
+        value:
+          service.beta.kubernetes.io/do-loadbalancer-enable-proxy-protocol: "true"
+
+  - target:
+      group: storage.k8s.io
+      version: v1
+      kind: StorageClass
+      name: standard
+    patch: |-
+      - op: replace
+        path: /provisioner
+        value: dobs.csi.digitalocean.com

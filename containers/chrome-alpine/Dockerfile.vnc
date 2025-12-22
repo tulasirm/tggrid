@@ -1,0 +1,54 @@
+# Chrome with VNC support for live viewing
+FROM alpine:edge
+
+# Install Chrome, VNC, and dependencies
+RUN apk add --no-cache \
+    chromium \
+    nss \
+    freetype \
+    freetype-dev \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont \
+    xvfb \
+    x11vnc \
+    supervisor \
+    fluxbox \
+    xterm \
+    && rm -rf /var/cache/apk/*
+
+# Create non-root user
+RUN addgroup -g 1000 -S chrome && \
+    adduser -u 1000 -S chrome -G chrome
+
+# Create necessary directories
+RUN mkdir -p /tmp/.X11-unix && \
+    chmod 1777 /tmp/.X11-unix && \
+    mkdir -p /home/chrome/.vnc && \
+    chown -R chrome:chrome /home/chrome
+
+# Set up environment
+ENV CHROME_BIN=/usr/bin/chromium-browser \
+    CHROME_PATH=/usr/bin/chromium-browser \
+    DISPLAY=:99 \
+    VNC_PORT=5900 \
+    SCREEN_WIDTH=1920 \
+    SCREEN_HEIGHT=1080 \
+    SCREEN_DEPTH=24
+
+# Copy startup script
+COPY vnc-startup.sh /vnc-startup.sh
+RUN chmod +x /vnc-startup.sh
+
+# Copy supervisor config
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+# Switch to chrome user
+USER chrome
+WORKDIR /home/chrome
+
+# Expose ports: 9222 (CDP), 5900 (VNC)
+EXPOSE 9222 5900
+
+# Start with supervisor
+CMD ["/vnc-startup.sh"]

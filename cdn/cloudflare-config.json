@@ -1,0 +1,144 @@
+{
+  "name": "TGGrid CDN Configuration - Cloudflare",
+  "description": "CDN configuration for TGGrid static assets",
+  "zones": [
+    {
+      "name": "tggrid.com",
+      "plan": "enterprise",
+      "settings": {
+        "cache_level": "aggressive",
+        "browser_cache_ttl": 31536000,
+        "edge_cache_ttl": 2592000,
+        "always_online": true,
+        "development_mode": false,
+        "minify": {
+          "css": true,
+          "js": true,
+          "html": true
+        },
+        "brotli": true,
+        "http2": true,
+        "http3": true,
+        "0rtt": true,
+        "ipv6": true,
+        "websockets": true,
+        "image_resizing": true,
+        "polish": "lossless"
+      },
+      "page_rules": [
+        {
+          "targets": [
+            {
+              "target": "url",
+              "constraint": {
+                "operator": "matches",
+                "value": "*.tggrid.com/_next/static/*"
+              }
+            }
+          ],
+          "actions": [
+            {
+              "id": "cache_level",
+              "value": "cache_everything"
+            },
+            {
+              "id": "edge_cache_ttl",
+              "value": 31536000
+            }
+          ],
+          "priority": 1,
+          "status": "active"
+        },
+        {
+          "targets": [
+            {
+              "target": "url",
+              "constraint": {
+                "operator": "matches",
+                "value": "*.tggrid.com/api/*"
+              }
+            }
+          ],
+          "actions": [
+            {
+              "id": "cache_level",
+              "value": "bypass"
+            }
+          ],
+          "priority": 2,
+          "status": "active"
+        }
+      ],
+      "firewall_rules": [
+        {
+          "description": "Rate limit API endpoints",
+          "filter": {
+            "expression": "(http.request.uri.path contains \"/api/\")"
+          },
+          "action": "challenge",
+          "action_parameters": {
+            "ratelimit": {
+              "period": 60,
+              "requests_per_period": 1000
+            }
+          }
+        }
+      ],
+      "workers": [
+        {
+          "name": "static-asset-optimizer",
+          "script": "cdn/workers/static-optimizer.js",
+          "routes": [
+            "*.tggrid.com/_next/static/*",
+            "*.tggrid.com/images/*",
+            "*.tggrid.com/fonts/*"
+          ]
+        }
+      ]
+    }
+  ],
+  "load_balancing": {
+    "enabled": true,
+    "pools": [
+      {
+        "name": "tggrid-us-east",
+        "origins": [
+          {
+            "name": "us-east-1",
+            "address": "us-east-1.tggrid.internal",
+            "weight": 1
+          }
+        ],
+        "monitor": {
+          "type": "https",
+          "port": 443,
+          "interval": 30,
+          "timeout": 5,
+          "retries": 2,
+          "method": "GET",
+          "path": "/api/health"
+        }
+      },
+      {
+        "name": "tggrid-eu-west",
+        "origins": [
+          {
+            "name": "eu-west-1",
+            "address": "eu-west-1.tggrid.internal",
+            "weight": 1
+          }
+        ],
+        "monitor": {
+          "type": "https",
+          "port": 443,
+          "interval": 30,
+          "timeout": 5,
+          "retries": 2,
+          "method": "GET",
+          "path": "/api/health"
+        }
+      }
+    ],
+    "steering_policy": "geo"
+  }
+}

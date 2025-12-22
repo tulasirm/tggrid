@@ -1,0 +1,50 @@
+# Firefox with VNC support for live viewing
+FROM alpine:edge
+
+# Install Firefox, VNC, and dependencies
+RUN apk add --no-cache \
+    firefox-esr \
+    nss \
+    freetype \
+    freetype-dev \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont \
+    dbus \
+    xvfb \
+    x11vnc \
+    supervisor \
+    fluxbox \
+    xterm \
+    && rm -rf /var/cache/apk/*
+
+# Create non-root user
+RUN addgroup -g 1000 -S firefox && \
+    adduser -u 1000 -S firefox -G firefox
+
+# Create necessary directories
+RUN mkdir -p /tmp/.X11-unix && \
+    chmod 1777 /tmp/.X11-unix && \
+    mkdir -p /home/firefox/.vnc && \
+    chown -R firefox:firefox /home/firefox
+
+# Set up environment
+ENV FIREFOX_BIN=/usr/bin/firefox-esr \
+    DISPLAY=:99 \
+    VNC_PORT=5900 \
+    SCREEN_WIDTH=1920 \
+    SCREEN_HEIGHT=1080 \
+    SCREEN_DEPTH=24
+
+# Copy startup script
+COPY vnc-startup.sh /vnc-startup.sh
+RUN chmod +x /vnc-startup.sh
+
+# Switch to firefox user
+USER firefox
+WORKDIR /home/firefox
+
+# Expose ports: 9222 (CDP), 5900 (VNC)
+EXPOSE 9222 5900
+
+CMD ["/vnc-startup.sh"]

@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  ufbrowsers-app:
+    image: ufbrowsers:latest
+    deploy:
+      replicas: 3
+      placement:
+        constraints:
+          - node.labels.region == ${REGION}
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=${DATABASE_URL}
+      - REGION=${REGION}
+      - PRIMARY_REGION=${PRIMARY_REGION:-us-east-1}
+    networks:
+      - ufbrowsers-network
+    ports:
+      - "3000:3000"
+
+  browser-pool:
+    image: ufbrowsers-browser-pool:latest
+    deploy:
+      replicas: 2
+      placement:
+        constraints:
+          - node.labels.region == ${REGION}
+    environment:
+      - REGION=${REGION}
+      - BROWSER_POOL_SIZE=${BROWSER_POOL_SIZE:-20}
+    networks:
+      - ufbrowsers-network
+    ports:
+      - "3002:3002"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  browser-websocket:
+    image: ufbrowsers-browser-websocket:latest
+    deploy:
+      replicas: 2
+      placement:
+        constraints:
+          - node.labels.region == ${REGION}
+    environment:
+      - REGION=${REGION}
+    networks:
+      - ufbrowsers-network
+    ports:
+      - "3001:3001"
+
+  nginx:
+    image: nginx:alpine
+    deploy:
+      replicas: 2
+      placement:
+        constraints:
+          - node.labels.region == ${REGION}
+    volumes:
+      - ./nginx/multi-region.conf:/etc/nginx/conf.d/default.conf
+    networks:
+      - ufbrowsers-network
+    ports:
+      - "80:80"
+      - "443:443"
+
+networks:
+  ufbrowsers-network:
+    driver: overlay
+    attachable: true

@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ufbrowsers-postgres
+    environment:
+      POSTGRES_DB: ufbrowsers
+      POSTGRES_USER: ufbrowsers
+      POSTGRES_PASSWORD: ufbrowsers_dev_password_123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ufbrowsers"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ufbrowsers-network
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: ufbrowsers-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@ufbrowsers.local
+      PGADMIN_DEFAULT_PASSWORD: admin_password
+    ports:
+      - "5050:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - ufbrowsers-network
+    profiles:
+      - dev
+
+volumes:
+  postgres_data:
+
+networks:
+  ufbrowsers-network:
+    driver: bridge

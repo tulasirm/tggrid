@@ -1,0 +1,208 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║                 DIGITALOCEAN DEPLOYMENT REFERENCE CARD                      ║
+║                           TGGrid Browser Automation                         ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+┌─ DEPLOYMENT PATHS ──────────────────────────────────────────────────────────┐
+│                                                                              │
+│  PATH A: App Platform          PATH B: DOKS Kubernetes    PATH C: Droplets │
+│  ━━━━━━━━━━━━━━━━━━━━          ━━━━━━━━━━━━━━━━━━━━━━    ━━━━━━━━━━━━━━  │
+│  Time:   15 minutes            Time:   30 minutes         Time:   45 min   │
+│  Cost:   $27/month             Cost:   $18-50/month       Cost:   $12/mon  │
+│  Setup:  ⭐ Easy               Setup:  ⭐⭐ Medium         Setup:  ⭐⭐     │
+│  Scale:  Auto                  Scale:  HPA (2-10)         Scale:  Manual   │
+│  Best:   MVP/Testing           Best:   Production         Best:   Control  │
+│                                                                              │
+│  RECOMMENDED FOR FIRST DEPLOYMENT: PATH A                                   │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌─ QUICK COMMANDS ────────────────────────────────────────────────────────────┐
+│                                                                              │
+│ PATH A (App Platform):                                                      │
+│   1. git add . && git commit -m "Deploy" && git push origin main            │
+│   2. Visit: https://cloud.digitalocean.com/apps                            │
+│   3. Create App → GitHub → Select Repo → Set Env Vars → Deploy             │
+│   4. Done! (5-10 min wait)                                                  │
+│                                                                              │
+│ PATH B (DOKS Kubernetes):                                                   │
+│   1. brew install doctl                                                     │
+│   2. doctl auth init                                                        │
+│   3. doctl kubernetes cluster create tggrid --region nyc3 --count 3         │
+│   4. kubectl apply -f DIGITALOCEAN-CONFIG.md (deployment.yaml section)     │
+│   5. doctl compute load-balancer create (or use Ingress)                    │
+│                                                                              │
+│ PATH C (Droplets + Docker):                                                 │
+│   1. doctl compute droplet create tggrid --region nyc3 --size s-2vcpu-4gb   │
+│   2. ssh root@<droplet-ip>                                                  │
+│   3. apt update && apt install -y docker.io docker-compose                  │
+│   4. Copy docker-compose.yml from DIGITALOCEAN-CONFIG.md                    │
+│   5. docker-compose up -d                                                   │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌─ ENVIRONMENT VARIABLES (ALL PATHS) ──────────────────────────────────────────┐
+│                                                                              │
+│ Required:                                                                    │
+│   DATABASE_URL=postgresql://user:pass@host:5432/tggrid                     │
+│   NEXTAUTH_SECRET=<openssl rand -base64 32>                                │
+│   STRIPE_SECRET_KEY=sk_test_xxxxx or sk_live_xxxxx                         │
+│   STRIPE_PUBLISHABLE_KEY=pk_test_xxxxx or pk_live_xxxxx                    │
+│   STRIPE_WEBHOOK_SECRET=whsec_xxxxx                                        │
+│   NEXTAUTH_URL=https://your-app.com                                        │
+│   NODE_ENV=production                                                       │
+│                                                                              │
+│ Optional (Browser Pool):                                                    │
+│   BROWSER_POOL_SIZE=20 (max containers)                                    │
+│   PRE_WARM_COUNT=10 (pre-warmed on startup)                                │
+│   CONTAINER_STARTUP_TIMEOUT=5000                                           │
+│                                                                              │
+│ Services:                                                                    │
+│   PORT=3000 (main app)                                                     │
+│   WEBSOCKET_PORT=3001 (Socket.IO)                                          │
+│   BROWSER_POOL_PORT=3002 (browser pool)                                    │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌─ DOCUMENTATION FILES ───────────────────────────────────────────────────────┐
+│                                                                              │
+│ 📄 DIGITALOCEAN-INDEX.md (START HERE)                                       │
+│    └─ Navigation guide to all documents                                    │
+│                                                                              │
+│ 📄 DIGITALOCEAN-SUMMARY.md (READ SECOND)                                    │
+│    └─ Overview of all 3 paths, comparison, decision making                 │
+│                                                                              │
+│ 📄 DIGITALOCEAN-QUICK-START.md (FOLLOW DURING DEPLOY)                      │
+│    └─ Step-by-step copy-paste commands for each path                       │
+│                                                                              │
+│ 📄 DIGITALOCEAN-DEPLOYMENT.md (REFERENCE WHEN STUCK)                       │
+│    └─ Detailed explanations, troubleshooting, best practices               │
+│                                                                              │
+│ 📄 DIGITALOCEAN-CONFIG.md (COPY-PASTE CONFIGS)                             │
+│    └─ Ready-to-use: app.yaml, deployment.yaml, docker-compose.yml         │
+│                                                                              │
+│ 📄 DIGITALOCEAN-REFERENCE-CARD.txt (THIS FILE)                             │
+│    └─ Quick reference - print or bookmark this                             │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌─ DEPLOYMENT CHECKLIST ──────────────────────────────────────────────────────┐
+│                                                                              │
+│ BEFORE DEPLOYMENT:                                                          │
+│   ☐ DigitalOcean account (you have this ✓)                                 │
+│   ☐ GitHub account with code pushed                                        │
+│   ☐ Stripe account with API keys                                           │
+│   ☐ OpenSSL to generate NEXTAUTH_SECRET: openssl rand -base64 32          │
+│   ☐ Time available: 15-45 minutes depending on path                        │
+│                                                                              │
+│ DURING DEPLOYMENT:                                                          │
+│   ☐ Follow DIGITALOCEAN-QUICK-START.md for your path                       │
+│   ☐ Set all environment variables correctly                                │
+│   ☐ Create PostgreSQL database (managed or container)                      │
+│   ☐ Run migrations: npm run prisma migrate deploy                          │
+│                                                                              │
+│ POST DEPLOYMENT:                                                            │
+│   ☐ Test health endpoint: curl https://your-app/api/health                │
+│   ☐ Access dashboard: https://your-app                                    │
+│   ☐ Test Stripe webhook: curl -X POST http://localhost:3000/api/webhooks │
+│   ☐ Create test Stripe customer (test mode)                               │
+│   ☐ Verify database connectivity                                          │
+│   ☐ Check logs for errors                                                 │
+│   ☐ Enable Stripe webhook in dashboard                                    │
+│   ☐ Test payment flow end-to-end                                          │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌─ COST BREAKDOWN (MONTHLY) ──────────────────────────────────────────────────┐
+│                                                                              │
+│ PATH A: App Platform                                                        │
+│   ├─ Base App Platform:        $12                                         │
+│   ├─ Database (Managed PG):     $15 (starting, scales with usage)          │
+│   └─ TOTAL:                     $27/month                                  │
+│                                                                              │
+│ PATH B: DOKS Kubernetes                                                     │
+│   ├─ K8s Cluster:              $12                                         │
+│   ├─ Worker Nodes (3):         $6-18 (depending on size)                  │
+│   ├─ Database (Managed PG):    $15                                        │
+│   ├─ Load Balancer:            $0 (K8s LB)                                │
+│   └─ TOTAL:                    $43-65/month                               │
+│                                                                              │
+│ PATH C: Droplets + Docker                                                   │
+│   ├─ Droplet:                  $12/month (2 vCPU, 4GB RAM)                │
+│   ├─ Database (Managed PG):    $15                                        │
+│   ├─ Storage (if needed):      $0-10                                      │
+│   └─ TOTAL:                    $27-37/month                               │
+│                                                                              │
+│ SAVINGS TIP: Start with unmanaged DB (Docker container) to cut $15/month  │
+│              Upgrade to managed database as you grow                        │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌─ IMPORTANT PORTS ───────────────────────────────────────────────────────────┐
+│                                                                              │
+│ 3000    Main Next.js App (public HTTPS)                                     │
+│ 3001    WebSocket Service (internal)                                        │
+│ 3002    Browser Pool Service (internal)                                     │
+│ 5432    PostgreSQL (internal or managed)                                    │
+│ 80/443  Nginx/Load Balancer (public HTTP/HTTPS)                            │
+│                                                                              │
+│ For deployments, only expose 80/443 publicly                                │
+│ Internal ports (3001, 3002, 5432) should be private                        │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌─ TROUBLESHOOTING QUICK FIXES ───────────────────────────────────────────────┐
+│                                                                              │
+│ Issue: "Database connection failed"                                         │
+│ Fix:   Check DATABASE_URL is correct, database exists, password works      │
+│                                                                              │
+│ Issue: "Stripe webhook not working"                                        │
+│ Fix:   Ensure STRIPE_WEBHOOK_SECRET is set, webhook URL is public HTTPS   │
+│                                                                              │
+│ Issue: "Container won't start (Docker quota)"                              │
+│ Fix:   Reduce BROWSER_POOL_SIZE or PRE_WARM_COUNT in environment          │
+│                                                                              │
+│ Issue: "Health check failing"                                              │
+│ Fix:   Ensure all 3 services running (app, websocket, browser-pool)       │
+│        Check services logs for errors                                      │
+│                                                                              │
+│ Issue: "High memory usage on Droplet"                                      │
+│ Fix:   Reduce BROWSER_POOL_SIZE or use larger Droplet ($24/mo)            │
+│                                                                              │
+│ For more help: See DIGITALOCEAN-DEPLOYMENT.md (Troubleshooting section)   │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌─ NEXT STEPS ────────────────────────────────────────────────────────────────┐
+│                                                                              │
+│ 1. READ:   DIGITALOCEAN-SUMMARY.md (5 minutes)                             │
+│            → Decide which path (A, B, or C)                                │
+│                                                                              │
+│ 2. FOLLOW: DIGITALOCEAN-QUICK-START.md (15-45 minutes)                     │
+│            → Execute steps for your chosen path                            │
+│                                                                              │
+│ 3. TEST:   Test endpoints and payment flow                                 │
+│            → curl https://your-app/api/health                             │
+│            → Create Stripe test customer                                   │
+│            → Create browser session and verify billing                     │
+│                                                                              │
+│ 4. DEPLOY: Make any customizations and deploy to production                │
+│            → Update Stripe keys to live mode                               │
+│            → Configure auto-scaling (if Path B)                            │
+│            → Set up monitoring and alerts                                  │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+📞 USEFUL LINKS:
+   DigitalOcean Console:     https://cloud.digitalocean.com
+   Personal Access Tokens:   https://cloud.digitalocean.com/account/api/tokens
+   App Platform Docs:        https://docs.digitalocean.com/products/app-platform/
+   DOKS Docs:                https://docs.digitalocean.com/products/kubernetes/
+   Droplets Docs:            https://docs.digitalocean.com/products/compute/
+   Stripe Dashboard:         https://dashboard.stripe.com
+   Stripe API Docs:          https://stripe.com/docs/api
+   doctl CLI Docs:           https://docs.digitalocean.com/reference/doctl/
+
+═══════════════════════════════════════════════════════════════════════════════
+Generated: December 22, 2025 | TGGrid Ultra-Fast Browser Automation Platform
+═══════════════════════════════════════════════════════════════════════════════

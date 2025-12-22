@@ -1,0 +1,186 @@
+{
+  "name": "TGGrid CDN Configuration - CloudFront",
+  "description": "AWS CloudFront configuration for TGGrid",
+  "distribution": {
+    "enabled": true,
+    "comment": "TGGrid Production CDN",
+    "priceClass": "PriceClass_All",
+    "aliases": ["tggrid.com", "www.tggrid.com", "cdn.tggrid.com"],
+    "defaultRootObject": "index.html",
+    "httpVersion": "http2and3",
+    "isIPV6Enabled": true,
+    "viewerCertificate": {
+      "acmCertificateArn": "arn:aws:acm:us-east-1:ACCOUNT_ID:certificate/CERT_ID",
+      "sslSupportMethod": "sni-only",
+      "minimumProtocolVersion": "TLSv1.2_2021"
+    },
+    "origins": [
+      {
+        "id": "tggrid-origin",
+        "domainName": "origin.tggrid.com",
+        "originPath": "",
+        "customHeaders": [],
+        "customOriginConfig": {
+          "httpPort": 80,
+          "httpsPort": 443,
+          "originProtocolPolicy": "https-only",
+          "originSslProtocols": ["TLSv1.2"],
+          "originReadTimeout": 30,
+          "originKeepaliveTimeout": 5
+        },
+        "connectionAttempts": 3,
+        "connectionTimeout": 10,
+        "originShield": {
+          "enabled": true,
+          "originShieldRegion": "us-east-1"
+        }
+      }
+    ],
+    "originGroups": {
+      "quantity": 1,
+      "items": [
+        {
+          "id": "tggrid-origin-group",
+          "failoverCriteria": {
+            "statusCodes": {
+              "quantity": 2,
+              "items": [500, 502, 503, 504]
+            }
+          },
+          "members": {
+            "quantity": 2,
+            "items": [
+              {
+                "originId": "tggrid-us-east"
+              },
+              {
+                "originId": "tggrid-eu-west"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "defaultCacheBehavior": {
+      "targetOriginId": "tggrid-origin",
+      "viewerProtocolPolicy": "redirect-to-https",
+      "allowedMethods": [
+        "GET",
+        "HEAD",
+        "OPTIONS",
+        "PUT",
+        "POST",
+        "PATCH",
+        "DELETE"
+      ],
+      "cachedMethods": ["GET", "HEAD", "OPTIONS"],
+      "compress": true,
+      "smoothStreaming": false,
+      "fieldLevelEncryptionId": "",
+      "forwardedValues": {
+        "queryString": true,
+        "cookies": {
+          "forward": "all"
+        },
+        "headers": ["Authorization", "CloudFront-Viewer-Country", "Host"]
+      },
+      "minTTL": 0,
+      "defaultTTL": 86400,
+      "maxTTL": 31536000,
+      "trustedSigners": {
+        "enabled": false,
+        "quantity": 0
+      },
+      "functionAssociations": {
+        "quantity": 2,
+        "items": [
+          {
+            "functionARN": "arn:aws:cloudfront::ACCOUNT_ID:function/security-headers",
+            "eventType": "viewer-response"
+          },
+          {
+            "functionARN": "arn:aws:cloudfront::ACCOUNT_ID:function/url-rewrite",
+            "eventType": "viewer-request"
+          }
+        ]
+      }
+    },
+    "cacheBehaviors": [
+      {
+        "pathPattern": "/_next/static/*",
+        "targetOriginId": "tggrid-origin",
+        "viewerProtocolPolicy": "https-only",
+        "allowedMethods": ["GET", "HEAD"],
+        "cachedMethods": ["GET", "HEAD"],
+        "compress": true,
+        "minTTL": 31536000,
+        "defaultTTL": 31536000,
+        "maxTTL": 31536000,
+        "forwardedValues": {
+          "queryString": false,
+          "cookies": {
+            "forward": "none"
+          }
+        }
+      },
+      {
+        "pathPattern": "/api/*",
+        "targetOriginId": "tggrid-origin",
+        "viewerProtocolPolicy": "https-only",
+        "allowedMethods": [
+          "GET",
+          "HEAD",
+          "OPTIONS",
+          "PUT",
+          "POST",
+          "PATCH",
+          "DELETE"
+        ],
+        "cachedMethods": ["GET", "HEAD"],
+        "compress": true,
+        "minTTL": 0,
+        "defaultTTL": 0,
+        "maxTTL": 0,
+        "forwardedValues": {
+          "queryString": true,
+          "cookies": {
+            "forward": "all"
+          },
+          "headers": ["*"]
+        }
+      },
+      {
+        "pathPattern": "/images/*",
+        "targetOriginId": "tggrid-origin",
+        "viewerProtocolPolicy": "https-only",
+        "allowedMethods": ["GET", "HEAD"],
+        "cachedMethods": ["GET", "HEAD"],
+        "compress": true,
+        "minTTL": 2592000,
+        "defaultTTL": 2592000,
+        "maxTTL": 31536000
+      }
+    ],
+    "customErrorResponses": [
+      {
+        "errorCode": 404,
+        "responsePagePath": "/404.html",
+        "responseCode": "404",
+        "errorCachingMinTTL": 300
+      },
+      {
+        "errorCode": 500,
+        "responsePagePath": "/500.html",
+        "responseCode": "500",
+        "errorCachingMinTTL": 0
+      }
+    ],
+    "logging": {
+      "enabled": true,
+      "includeCookies": false,
+      "bucket": "tggrid-cdn-logs.s3.amazonaws.com",
+      "prefix": "cloudfront/"
+    },
+    "webACLId": "arn:aws:wafv2:us-east-1:ACCOUNT_ID:global/webacl/tggrid-waf/WAF_ID"
+  }
+}

@@ -1,0 +1,66 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: tggrid
+
+commonLabels:
+  platform: aws
+  environment: production
+
+resources:
+  - ../base-deployment.yaml
+
+patchesStrategicMerge:
+  - ingress-patch.yaml
+  - service-patch.yaml
+
+configMapGenerator:
+  - name: tggrid-config
+    behavior: merge
+    literals:
+      - PLATFORM=aws
+      - KUBERNETES_PROVIDER=aws
+
+secretGenerator:
+  - name: tggrid-secrets
+    behavior: merge
+    envs:
+      - secrets.env
+
+images:
+  - name: tggrid/main-app
+    newTag: latest
+    newName: YOUR_AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/tggrid/main-app
+  - name: tggrid/browser-pool
+    newTag: latest
+    newName: YOUR_AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/tggrid/browser-pool
+  - name: tggrid/websocket-service
+    newTag: latest
+    newName: YOUR_AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/tggrid/websocket-service
+
+patchesJson6902:
+  - target:
+      group: storage.k8s.io
+      version: v1
+      kind: StorageClass
+    patch: |-
+      - op: replace
+        path: /provisioner
+        value: ebs.csi.aws.com
+      - op: add
+        path: /parameters
+        value:
+          type: gp3
+          iops: "3000"
+          throughput: "125"
+
+  - target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: browser-pool
+    patch: |-
+      - op: add
+        path: /spec/template/spec/nodeSelector
+        value:
+          node.kubernetes.io/instance-type: m5.xlarge

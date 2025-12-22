@@ -1,0 +1,30 @@
+{
+  "name": "browser-websocket-service",
+  "version": "1.0.0",
+  "description": "Real-time WebSocket service for Enterprise Selenium Box",
+  "type": "module",
+  "main": "index.ts",
+  "scripts": {
+    "dev": "bun --hot index.ts",
+    "start": "bun index.ts",
+    "build": "bun build ./index.ts --outdir ./dist --target bun",
+    "lint": "eslint . --ext .ts",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "socket.io": "^4.7.4",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.5",
+    "@typescript-eslint/eslint-plugin": "^6.15.0",
+    "@typescript-eslint/parser": "^6.15.0",
+    "eslint": "^8.56.0",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
+  }
+}

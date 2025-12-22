@@ -1,0 +1,203 @@
+# Default values for ufbrowsers Helm chart
+
+replicaCount:
+  app: 3
+  browserPool: 3
+  websocket: 2
+
+image:
+  registry: docker.io
+  app:
+    repository: ufbrowsers/main-app
+    tag: latest
+    pullPolicy: Always
+  browserPool:
+    repository: ufbrowsers/browser-pool
+    tag: latest
+    pullPolicy: Always
+  websocket:
+    repository: ufbrowsers/websocket-service
+    tag: latest
+    pullPolicy: Always
+
+imagePullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext:
+  runAsNonRoot: false
+  fsGroup: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+service:
+  app:
+    type: LoadBalancer
+    port: 3000
+    targetPort: 3000
+  browserPool:
+    type: LoadBalancer
+    port: 3002
+    targetPort: 3002
+  websocket:
+    type: ClusterIP
+    port: 3001
+    targetPort: 3001
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hosts:
+    - host: ufbrowsers.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: ufbrowsers-tls
+      hosts:
+        - ufbrowsers.example.com
+
+resources:
+  app:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+  browserPool:
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+    requests:
+      cpu: 1000m
+      memory: 1Gi
+  websocket:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+  postgres:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+
+autoscaling:
+  app:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  browserPool:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 75
+    targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app
+                operator: In
+                values:
+                  - ufbrowsers-app
+          topologyKey: kubernetes.io/hostname
+
+livenessProbe:
+  enabled: true
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  enabled: true
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+env:
+  NODE_ENV: "production"
+  METRICS_ENABLED: "true"
+  ENABLE_LOAD_BALANCER: "true"
+  LOAD_BALANCER_ALGORITHM: "round-robin"
+  HEALTH_CHECK_INTERVAL: "30"
+  BROWSER_POOL_SIZE: "20"
+  PRE_WARM_COUNT: "10"
+  CONTAINER_STARTUP_TIMEOUT: "5000"
+  MAX_MEMORY_PER_CONTAINER: "128"
+  MAX_CPU_PER_CONTAINER: "0.25"
+
+secrets:
+  DATABASE_URL: "postgresql://user:password@postgres:5432/ufbrowsers"
+  NEXTAUTH_SECRET: "change-me-in-production"
+
+persistence:
+  enabled: true
+  storageClass: "standard"
+  accessMode: ReadWriteOnce
+  size: 10Gi
+
+postgresql:
+  enabled: true
+  auth:
+    username: ufbrowsers
+    password: changeme
+    database: ufbrowsers
+  primary:
+    persistence:
+      size: 10Gi
+
+redis:
+  enabled: false
+
+ingress-nginx:
+  enabled: false
+
+monitoring:
+  prometheus:
+    enabled: true
+    scrapeInterval: 30s
+  grafana:
+    enabled: true
+    adminPassword: admin
+
+certManager:
+  enabled: true
+  issuer: letsencrypt-prod
+  email: admin@example.com
+
+platformConfig:
+  platform: "generic"
+  region: "us-east-1"
+  environment: "production"

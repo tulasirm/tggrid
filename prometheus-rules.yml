@@ -1,0 +1,94 @@
+groups:
+  - name: tggrid-alerts
+    interval: 30s
+    rules:
+      # Application Alerts
+      - alert: MainAppDown
+        expr: up{job="tggrid-app"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Main Application is down"
+          description: "TGGrid main app has been unreachable for 2+ minutes"
+
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > 0.85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage detected"
+          description: "Memory usage is above 85%"
+
+      - alert: HighCPUUsage
+        expr: (1 - avg(rate(node_cpu_seconds_total{mode="idle"}[5m]))) > 0.80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage detected"
+          description: "CPU usage is above 80%"
+
+      - alert: DiskSpaceRunningOut
+        expr: (node_filesystem_avail_bytes{fstype!~"tmpfs|fuse.lxcfs"} / node_filesystem_size_bytes) < 0.10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low disk space"
+          description: "Disk space is below 10% available"
+
+      - alert: PostgreSQLDown
+        expr: pg_up{job="postgres"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "PostgreSQL database is down"
+          description: "Database connection failed"
+
+      - alert: RedisDown
+        expr: redis_up{job="redis"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis cache is down"
+          description: "Redis connection failed"
+
+      - alert: BrowserPoolCrash
+        expr: up{job="browser-pool"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Browser Pool service is down"
+          description: "Browser pool has crashed or become unreachable"
+
+      - alert: WebSocketServiceDown
+        expr: up{job="websocket-service"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "WebSocket service is down"
+          description: "Real-time WebSocket service is unavailable"
+
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High response time"
+          description: "API response time 95th percentile > 1 second"
+
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate"
+          description: "Error rate is above 5%"

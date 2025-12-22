@@ -1,0 +1,548 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tggrid
+  labels:
+    name: tggrid
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tggrid-config
+  namespace: tggrid
+data:
+  NODE_ENV: "production"
+  NEXTAUTH_URL: "https://tggrid.example.com"
+  BROWSER_POOL_PORT: "3002"
+  WEBSOCKET_PORT: "3001"
+  METRICS_ENABLED: "true"
+  ENABLE_LOAD_BALANCER: "true"
+  LOAD_BALANCER_ALGORITHM: "round-robin"
+  HEALTH_CHECK_INTERVAL: "30"
+  BROWSER_POOL_SIZE: "20"
+  PRE_WARM_COUNT: "10"
+  CONTAINER_STARTUP_TIMEOUT: "5000"
+  MAX_MEMORY_PER_CONTAINER: "128"
+  MAX_CPU_PER_CONTAINER: "0.25"
+  CONTAINER_RECYCLE_THRESHOLD: "50"
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: tggrid-secrets
+  namespace: tggrid
+type: Opaque
+stringData:
+  DATABASE_URL: "postgresql://user:password@postgres:5432/tggrid"
+  NEXTAUTH_SECRET: "your-super-secret-key-change-in-production"
+  DOCKER_USERNAME: "your-docker-username"
+  DOCKER_PASSWORD: "your-docker-password"
+  DOCKER_SERVER: "docker.io"
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-data
+  namespace: tggrid
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: standard
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: tggrid
+  labels:
+    app: postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+              name: postgres
+          env:
+            - name: POSTGRES_DB
+              value: tggrid
+            - name: POSTGRES_USER
+              value: tggrid
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: tggrid-secrets
+                  key: DATABASE_URL
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql/data
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - pg_isready -U tggrid
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      volumes:
+        - name: postgres-storage
+          persistentVolumeClaim:
+            claimName: postgres-data
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: tggrid
+spec:
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+      name: postgres
+  type: ClusterIP
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: browser-pool
+  namespace: tggrid
+  labels:
+    app: browser-pool
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: browser-pool
+  template:
+    metadata:
+      labels:
+        app: browser-pool
+    spec:
+      serviceAccountName: browser-pool-sa
+      containers:
+        - name: browser-pool
+          image: tggrid/browser-pool:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3002
+              name: http
+              protocol: TCP
+            - containerPort: 3003
+              name: metrics
+              protocol: TCP
+          env:
+            - name: NODE_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: tggrid-config
+                  key: NODE_ENV
+            - name: BROWSER_POOL_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: tggrid-config
+                  key: BROWSER_POOL_PORT
+            - name: BROWSER_POOL_SIZE
+              valueFrom:
+                configMapKeyRef:
+                  name: tggrid-config
+                  key: BROWSER_POOL_SIZE
+            - name: PRE_WARM_COUNT
+              valueFrom:
+                configMapKeyRef:
+                  name: tggrid-config
+                  key: PRE_WARM_COUNT
+            - name: DOCKER_HOST
+              value: "unix:///var/run/docker.sock"
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "1000m"
+            limits:
+              memory: "2Gi"
+              cpu: "2000m"
+          volumeMounts:
+            - name: docker-socket
+              mountPath: /var/run/docker.sock
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3002
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3002
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          securityContext:
+            privileged: true
+      volumes:
+        - name: docker-socket
+          hostPath:
+            path: /var/run/docker.sock
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - browser-pool
+                topologyKey: kubernetes.io/hostname
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: browser-pool
+  namespace: tggrid
+  labels:
+    app: browser-pool
+spec:
+  selector:
+    app: browser-pool
+  ports:
+    - port: 3002
+      targetPort: 3002
+      name: http
+      protocol: TCP
+    - port: 3003
+      targetPort: 3003
+      name: metrics
+      protocol: TCP
+  type: LoadBalancer
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: websocket-service
+  namespace: tggrid
+  labels:
+    app: websocket-service
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: websocket-service
+  template:
+    metadata:
+      labels:
+        app: websocket-service
+    spec:
+      containers:
+        - name: websocket
+          image: tggrid/websocket-service:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3001
+              name: websocket
+              protocol: TCP
+          env:
+            - name: NODE_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: tggrid-config
+                  key: NODE_ENV
+            - name: WEBSOCKET_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: tggrid-config
+                  key: WEBSOCKET_PORT
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            tcpSocket:
+              port: 3001
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            tcpSocket:
+              port: 3001
+            initialDelaySeconds: 5
+            periodSeconds: 5
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: websocket-service
+  namespace: tggrid
+  labels:
+    app: websocket-service
+spec:
+  selector:
+    app: websocket-service
+  ports:
+    - port: 3001
+      targetPort: 3001
+      name: websocket
+      protocol: TCP
+  type: ClusterIP
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tggrid-app
+  namespace: tggrid
+  labels:
+    app: tggrid-app
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: tggrid-app
+  template:
+    metadata:
+      labels:
+        app: tggrid-app
+    spec:
+      imagePullSecrets:
+        - name: docker-secret
+      containers:
+        - name: app
+          image: tggrid/main-app:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+              name: http
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: tggrid-config
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: tggrid-secrets
+                  key: DATABASE_URL
+            - name: NEXTAUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: tggrid-secrets
+                  key: NEXTAUTH_SECRET
+            - name: BROWSER_POOL_URL
+              value: "http://browser-pool:3002"
+            - name: WEBSOCKET_URL
+              value: "http://websocket-service:3001"
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tggrid-app
+  namespace: tggrid
+  labels:
+    app: tggrid-app
+spec:
+  selector:
+    app: tggrid-app
+  ports:
+    - port: 3000
+      targetPort: 3000
+      name: http
+      protocol: TCP
+  type: LoadBalancer
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: tggrid-app-hpa
+  namespace: tggrid
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: tggrid-app
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: browser-pool-hpa
+  namespace: tggrid
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: browser-pool
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 75
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: tggrid-app-pdb
+  namespace: tggrid
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: tggrid-app
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: browser-pool-pdb
+  namespace: tggrid
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: browser-pool
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: tggrid-network-policy
+  namespace: tggrid
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: tggrid
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: browser-pool-sa
+  namespace: tggrid
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: browser-pool-role
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: browser-pool-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: browser-pool-role
+subjects:
+  - kind: ServiceAccount
+    name: browser-pool-sa
+    namespace: tggrid
