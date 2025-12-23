@@ -815,13 +815,13 @@ export default function SeleniumBoxDashboard() {
 
   if (!isAuthenticated) {
     return (
-      <div className="relative min-h-screen bg-gradient-to-br from-pitch-black via-background to-deep-mocha overflow-x-hidden">
+      <div className="relative min-h-screen bg-background overflow-x-hidden">
           {/* Navigation */}
           <nav className="fixed top-0 w-full z-40 border-b border-pacific-blue/20 bg-background/80 backdrop-blur-sm pointer-events-auto">
             <div className="max-w-7xl mx-auto w-full px-6 py-4 flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <Monitor className="h-8 w-8 text-coral-glow" />
-                <span className="text-xl font-bold bg-gradient-to-r from-coral-glow to-pacific-cyan bg-clip-text text-transparent">UFBrowsers</span>
+                <span className="text-xl font-bold text-coral-glow">UFBrowsers</span>
               </div>
               <div className="flex items-center gap-4">
                 <a href="#pricing" className="text-sm text-muted-foreground hover:text-coral-glow transition">Pricing</a>
@@ -842,17 +842,17 @@ export default function SeleniumBoxDashboard() {
                 <div className="space-y-6">
                   <Badge className="bg-coral-glow/20 text-coral-glow border-coral-glow/30 w-fit">🚀 Enterprise Grade Solution</Badge>
                   <div className="space-y-2">
-                    <h1 className="text-6xl lg:text-7xl font-black leading-tight tracking-tight text-white">
+                    <h1 className="text-6xl lg:text-7xl font-black leading-tight tracking-tight text-pitch-black">
                       Ultra-Fast
                     </h1>
-                    <h1 className="text-6xl lg:text-7xl font-black leading-tight tracking-tight bg-gradient-to-r from-coral-glow via-pacific-cyan to-pacific-blue bg-clip-text text-transparent">
+                    <h1 className="text-6xl lg:text-7xl font-black leading-tight tracking-tight text-coral-glow">
                       Browser Automation
                     </h1>
-                    <h1 className="text-6xl lg:text-7xl font-black leading-tight tracking-tight text-white">
+                    <h1 className="text-6xl lg:text-7xl font-black leading-tight tracking-tight text-pitch-black">
                       At Scale
                     </h1>
                   </div>
-                  <p className="text-lg lg:text-xl text-muted-foreground max-w-2xl leading-relaxed pt-2">
+                  <p className="text-lg lg:text-xl text-pitch-black/80 max-w-2xl leading-relaxed pt-2">
                     Deploy unlimited parallel browser sessions with sub-200ms startup times. Pre-warmed containers, intelligent pooling, and direct CDP control for blazing fast automation.
                   </p>
                 </div>
@@ -884,7 +884,6 @@ export default function SeleniumBoxDashboard() {
 
               {/* Hero Visual */}
               <div className="relative hidden lg:block">
-                <div className="absolute inset-0 bg-gradient-to-r from-coral-glow/20 to-pacific-cyan/20 rounded-lg blur-3xl -z-10"></div>
                 <Card className="border-pacific-blue/30 bg-card/50 backdrop-blur">
                   <CardContent className="p-8">
                     <div className="space-y-4">
@@ -1126,7 +1125,7 @@ export default function SeleniumBoxDashboard() {
                 ].map((plan, i) => (
                   <Card key={i} className={cn(
                     "border-transparent transition-all",
-                    plan.highlighted ? "border-coral-glow/50 bg-gradient-to-br from-coral-glow/10 to-transparent ring-2 ring-coral-glow/30 scale-105" : "bg-card/50 hover:bg-card/70"
+                    plan.highlighted ? "border-coral-glow/50 bg-card/80 ring-2 ring-coral-glow/30 scale-105" : "bg-card/50 hover:bg-card/70"
                   )}>
                     <CardContent className="p-8">
                       <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
@@ -1207,7 +1206,7 @@ export default function SeleniumBoxDashboard() {
 
             {/* CTA Section */}
             <div className="text-center">
-              <Card className="max-w-3xl mx-auto border-coral-glow/30 bg-gradient-to-br from-coral-glow/10 to-deep-mocha/10">
+              <Card className="max-w-3xl mx-auto border-coral-glow/30 bg-card/80">
                 <CardContent className="p-12">
                   <h2 className="text-4xl font-bold mb-4">Ready to Scale?</h2>
                   <p className="text-muted-foreground mb-8 text-lg">Join leading enterprises transforming their testing and automation with UFBrowsers.</p>
@@ -1278,7 +1277,7 @@ export default function SeleniumBoxDashboard() {
         </footer>
 
         <Dialog open={showSignInDialog} onOpenChange={setShowSignInDialog}>
-          <DialogContent className="sm:max-w-[450px] z-[10000]">
+          <DialogContent className="sm:max-w-[450px]">
             <DialogHeader>
               <DialogTitle className="text-2xl">Welcome Back</DialogTitle>
               <DialogDescription>
@@ -1369,7 +1368,7 @@ export default function SeleniumBoxDashboard() {
         </Dialog>
 
         <Dialog open={showSignUpDialog} onOpenChange={setShowSignUpDialog}>
-          <DialogContent className="sm:max-w-[450px] z-[10000]">
+          <DialogContent className="sm:max-w-[450px]">
             <DialogHeader>
               <DialogTitle className="text-2xl font-bold text-coral-glow">Start Your Free Trial</DialogTitle>
               <DialogDescription className="text-base pt-2">
@@ -2163,28 +2162,28 @@ export default function SeleniumBoxDashboard() {
 
                   {/* Summary Stats */}
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <Card className="border-coral-glow/30 bg-gradient-to-br from-coral-glow/5 to-transparent">
+                    <Card className="border-coral-glow/30 bg-card/50">
                       <CardContent className="p-6">
                         <div className="text-sm text-muted-foreground mb-1">Running</div>
                         <div className="text-3xl font-bold text-coral-glow">{sessions.filter(s => s.status === 'running').length}</div>
                         <p className="text-xs text-muted-foreground mt-2">Active sessions</p>
                       </CardContent>
                     </Card>
-                    <Card className="border-pacific-cyan/30 bg-gradient-to-br from-pacific-cyan/5 to-transparent">
+                    <Card className="border-pacific-cyan/30 bg-card/50">
                       <CardContent className="p-6">
                         <div className="text-sm text-muted-foreground mb-1">Total</div>
                         <div className="text-3xl font-bold text-pacific-cyan">{sessions.length}</div>
                         <p className="text-xs text-muted-foreground mt-2">All sessions</p>
                       </CardContent>
                     </Card>
-                    <Card className="border-pacific-blue/30 bg-gradient-to-br from-pacific-blue/5 to-transparent">
+                    <Card className="border-pacific-blue/30 bg-card/50">
                       <CardContent className="p-6">
                         <div className="text-sm text-muted-foreground mb-1">VNC Enabled</div>
                         <div className="text-3xl font-bold text-pacific-blue">{sessions.filter(s => s.capabilities.enableVNC).length}</div>
                         <p className="text-xs text-muted-foreground mt-2">With remote access</p>
                       </CardContent>
                     </Card>
-                    <Card className="border-deep-mocha/30 bg-gradient-to-br from-deep-mocha/5 to-transparent">
+                    <Card className="border-deep-mocha/30 bg-card/50">
                       <CardContent className="p-6">
                         <div className="text-sm text-muted-foreground mb-1">Avg Duration</div>
                         <div className="text-3xl font-bold text-foreground">
@@ -2674,7 +2673,7 @@ export default function SeleniumBoxDashboard() {
                         { label: 'Peak Concurrency', value: '847', change: '-5%', trend: 'down', color: 'pacific-blue' },
                         { label: 'System Uptime', value: '99.9%', change: '+0.1%', trend: 'up', color: 'deep-mocha' },
                       ].map((kpi, i) => (
-                        <Card key={i} className={`border-${kpi.color}/30 bg-gradient-to-br from-${kpi.color}/5 to-transparent`}>
+                        <Card key={i} className={`border-${kpi.color}/30 bg-card/50`}>
                           <CardContent className="p-6">
                             <p className="text-sm text-muted-foreground mb-2">{kpi.label}</p>
                             <div className="text-3xl font-bold text-foreground mb-2">{kpi.value}</div>
@@ -3182,7 +3181,7 @@ export default function SeleniumBoxDashboard() {
 
         {/* Sign In Dialog */}
         <Dialog open={showSignInDialog} onOpenChange={setShowSignInDialog}>
-          <DialogContent className="sm:max-w-[400px] z-[10000]">
+          <DialogContent className="sm:max-w-[400px]">
             <DialogHeader>
               <DialogTitle>Sign In</DialogTitle>
               <DialogDescription>
@@ -3253,7 +3252,7 @@ export default function SeleniumBoxDashboard() {
 
         {/* Session Detail Modal with Video */}
         <Dialog open={showSessionDetailModal} onOpenChange={setShowSessionDetailModal}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-pitch-black border-pacific-blue/20 z-[10000]">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-pitch-black border-pacific-blue/20">
             <DialogHeader>
               <DialogTitle className="text-coral-glow">Session Details & Video</DialogTitle>
               <DialogDescription className="text-muted-foreground">

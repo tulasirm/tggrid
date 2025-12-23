@@ -41,6 +41,13 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  
+  /* Custom Brand Colors */
+  --color-coral-glow: #0353a4;
+  --color-pacific-cyan: #b9d6f2;
+  --color-pacific-blue: #006daa;
+  --color-pitch-black: #061a40;
+  --color-deep-mocha: #003559;
 }
 
 :root {
@@ -50,37 +57,37 @@
   /* #003459 = rgb(0, 52, 89) - Dark Blue */
   /* #00A8E8 = rgb(0, 168, 232) - Light Cyan */
   
-  --background: 0 0% 2%;
+  --background: 217 85% 13%;
   --foreground: 0 0% 100%;
-  --card: 0 0% 8%;
+  --card: 210 74% 17%;
   --card-foreground: 0 0% 100%;
-  --popover: 0 0% 8%;
+  --popover: 210 74% 17%;
   --popover-foreground: 0 0% 100%;
-  --primary: 201 100% 46%;
+  --primary: 201 100% 33%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 201 100% 46%;
-  --secondary-foreground: 201 100% 17%;
-  --muted: 0 0% 35%;
-  --muted-foreground: 0 0% 65%;
-  --accent: 201 100% 46%;
-  --accent-foreground: 201 100% 17%;
+  --secondary: 201 100% 33%;
+  --secondary-foreground: 210 100% 86%;
+  --muted: 210 50% 25%;
+  --muted-foreground: 210 30% 70%;
+  --accent: 201 100% 33%;
+  --accent-foreground: 210 100% 86%;
   --destructive: 0 84% 60%;
-  --border: 0 0% 15%;
-  --input: 0 0% 15%;
-  --ring: 201 100% 46%;
-  --chart-1: 201 100% 46%;
-  --chart-2: 201 100% 17%;
+  --border: 210 40% 20%;
+  --input: 210 40% 20%;
+  --ring: 201 100% 33%;
+  --chart-1: 201 100% 33%;
+  --chart-2: 210 74% 17%;
   --chart-3: 201 100% 46%;
   --chart-4: 0 84% 60%;
-  --chart-5: 201 100% 46%;
-  --sidebar: 0 0% 8%;
+  --chart-5: 210 100% 86%;
+  --sidebar: 210 74% 17%;
   --sidebar-foreground: 0 0% 100%;
-  --sidebar-primary: 201 100% 46%;
+  --sidebar-primary: 201 100% 33%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 201 100% 46%;
-  --sidebar-accent-foreground: 201 100% 17%;
-  --sidebar-border: 0 0% 18%;
-  --sidebar-ring: 201 100% 46%;
+  --sidebar-accent: 201 100% 33%;
+  --sidebar-accent-foreground: 210 100% 86%;
+  --sidebar-border: 210 40% 20%;
+  --sidebar-ring: 201 100% 33%;
   
   /* Custom brand colors for direct use */
   --deep-mocha: 201 100% 17%;
@@ -130,5 +137,30 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* Modal & Dialog Z-Index Layer Fix */
+@layer components {
+  /* Ensure dialogs and modals are always visible */
+  [data-slot="dialog-portal"] {
+    @apply pointer-events-auto z-[60];
+  }
+  
+  [data-slot="dialog-overlay"] {
+    @apply !z-50 !bg-black/50 !fixed !inset-0;
+  }
+  
+  [data-slot="dialog-content"] {
+    @apply !z-[60] !relative;
+  }
+  
+  /* Fix for all Radix UI portals */
+  [data-radix-dialog-overlay] {
+    @apply !z-50;
+  }
+  
+  [data-radix-dialog-content] {
+    @apply !z-[60];
   }
 }

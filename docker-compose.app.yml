@@ -1,0 +1,92 @@
+# Docker Compose for App, Browser Pool, and WebSocket - UFBrowsers
+# Use this when PostgreSQL is running on a separate machine
+
+version: '3.8'
+
+services:
+  # Main Application
+  ufbrowsers-app:
+    build: .
+    container_name: ufbrowsers-app
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - BROWSER_POOL_URL=http://browser-pool:3002
+      - BROWSER_WEBSOCKET_URL=http://browser-websocket:3001
+      - DATABASE_URL=${DATABASE_URL:-postgresql://admin:nimda@10.124.0.4:5432/ufbrowsers}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-BYd2SlvmSkOMwnpe4GKFvTHexwmzceAuGQLMkW2x7Dk=}
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:3000}
+      - STRIPE_PUBLIC_KEY=${STRIPE_PUBLIC_KEY:-}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-}
+    depends_on:
+      - browser-pool
+      - browser-websocket
+    volumes:
+      - ./downloads:/app/downloads
+      - ./logs:/app/logs
+    restart: unless-stopped
+    networks:
+      - ufbrowsers-network
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+
+  # Ultra-Fast Browser Pool Service
+  browser-pool:
+    build: ./mini-services/browser-pool
+    container_name: ufbrowsers-browser-pool
+    ports:
+      - "3002:3002"
+      - "3003:3003"
+    environment:
+      - BROWSER_POOL_SIZE=${BROWSER_POOL_SIZE:-30}
+      - PRE_WARM_COUNT=${PRE_WARM_COUNT:-15}
+      - MAX_MEMORY_PER_CONTAINER=${MAX_MEMORY_PER_CONTAINER:-128}
+      - MAX_CPU_PER_CONTAINER=${MAX_CPU_PER_CONTAINER:-0.25}
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./logs:/app/logs
+    restart: unless-stopped
+    networks:
+      - ufbrowsers-network
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2'
+        reservations:
+          memory: 2G
+          cpus: '1'
+
+  # WebSocket Service for Real-time Updates
+  browser-websocket:
+    build: ./mini-services/browser-websocket
+    container_name: ufbrowsers-browser-websocket
+    ports:
+      - "3001:3001"
+    environment:
+      - WEBSOCKET_PORT=3001
+      - NODE_ENV=${NODE_ENV:-production}
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:3000}
+    restart: unless-stopped
+    networks:
+      - ufbrowsers-network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+
+networks:
+  ufbrowsers-network:
+    driver: bridge
