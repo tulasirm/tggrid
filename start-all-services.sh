@@ -36,10 +36,18 @@ echo ""
 
 # Check for bun
 if ! command -v bun &> /dev/null; then
-  echo -e "${RED}❌ Bun is not installed${NC}"
-  exit 1
+  # Try to find bun in .bun directory
+  if [ -f "$HOME/.bun/bin/bun" ]; then
+    export PATH="$HOME/.bun/bin:$PATH"
+    echo -e "${GREEN}✓${NC} Bun found at $HOME/.bun/bin/bun"
+  else
+    echo -e "${RED}❌ Bun is not installed${NC}"
+    echo -e "${YELLOW}   Install with: curl -fsSL https://bun.sh/install | bash${NC}"
+    exit 1
+  fi
+else
+  echo -e "${GREEN}✓${NC} Bun installed"
 fi
-echo -e "${GREEN}✓${NC} Bun installed"
 
 # Check for Docker
 if ! command -v docker &> /dev/null; then
